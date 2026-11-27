@@ -1,7 +1,7 @@
 # phim-thuyet-minh — làm video thuyết minh tiếng Việt từ phim hoạt hình Trung Quốc
 
 Bộ mã chạy trên máy bạn (macOS hoặc Linux) để biến một video Douyin / Bilibili thành video tiếng Việt: tách tiếng, nghe chữ Trung, làm mờ phụ đề
-Trung, ghép giọng thuyết minh, thêm nhạc nền, dựng ra mp4 có phụ đề vàng và ảnh bìa. Không cần khoá API nào.
+Trung và logo kênh nguồn, ghép giọng thuyết minh, thêm nhạc nền, dựng ra mp4 có phụ đề vàng và ảnh bìa. Không cần khoá API nào.
 
 Bộ mã này được viết để **trợ lý AI của bạn chạy** (Claude, Codex…) cùng gói kỹ năng **HG Trend** — kỹ năng «lam-video-thuyet-minh» dặn trợ lý
 làm từng bước. Những việc cần dịch vụ ngoài trợ lý làm qua HG Trend (trả bằng token của tài khoản HG):
@@ -50,7 +50,8 @@ làm đúng việc ghi trong phiếu rồi chạy lại đúng bước đó. Th�
 Ra: `07_out/<tập>_final.mp4`, `07_out/KIEM.md` (bảng kiểm), `08_dang/bia_final.png` (video dọc thêm `08_dang/bia_doc.png` cho Shorts), `08_dang/bai_dang.json` (tiêu đề, mô tả, thẻ). Đăng lên
 YouTube là việc của bạn.
 
-Đổi bộ số (âm lượng, tốc độ giọng, màu phụ đề…): tạo `tap/cau_hinh.json` ghi đè các khoá trong `ptm/chung.py` (`CAU_HINH_GOC`).
+Đổi bộ số (âm lượng, tốc độ giọng, màu phụ đề…): tạo `tap/cau_hinh.json` ghi đè các khoá trong `ptm/chung.py` (`CAU_HINH_GOC`). Bước `mo-chu` tự dò logo / chữ ký kênh nguồn đứng yên sát mép hình
+và làm mờ suốt phim; dò nhầm thì ghi `{"do_logo": false}`, logo máy không thấy thì thêm tay vào `05_hinh/them_tay.json`.
 
 ## Bản quyền — đọc trước khi đăng
 

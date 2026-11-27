@@ -1,7 +1,8 @@
 """B5 — TÌM CHỮ TRUNG trên hình để làm mờ + VẼ PHỤ ĐỀ VIỆT (PNG).
 
 1. Rút khung 1 hình/giây (rộng 960) → RapidOCR (ptm.ocr). Ô chữ Hán ở đáy khung (y > 72%) = phụ đề in chết;
-   ô lặp cùng chỗ ở ≥ 50% khung = logo/watermark tĩnh.
+   ô lặp cùng chỗ ở ≥ 50% khung = logo/watermark tĩnh. Thêm phép dò bằng HÌNH (`do_logo`): nét đứng yên ở ≥ 45% khung, sát mép khung
+   = chữ ký / logo kênh nguồn mà bộ đọc chữ bỏ sót (chữ trong suốt, chữ Latin, hình vẽ). Dò nhầm thì tắt: `tap/cau_hinh.json` {"do_logo": false}.
 2. Ra `05_hinh/vung_mo.json`: dải phụ đề (x1,y1,x2,y2 theo khung gốc) + các khoảng giây có chữ; ô tĩnh (mờ suốt phim);
    ô «thêm» (chữ ngoài dải, có khoảng giây riêng); vị trí chữ Việt cho câu có chữ Trung dời chỗ. B7 làm mờ theo tệp này.
 3. Vẽ phụ đề Việt từng câu bằng Pillow: vàng, viền đen, tối đa 2 dòng, phông Baloo 2 ExtraBold
@@ -121,6 +122,62 @@ def phan_tich(ocr, W, H, cau=None):
             them.append({"x1": max(0, min(xs1) - 8), "y1": max(0, min(ys1) - 6), "x2": min(W, max(xs2) + 8), "y2": min(H, max(ys2) + 6),
                          "chu": ds[0][1]["chu"], "khoang": kh})
     return dai, khoang, o_tinh, len(sub), them, vi_tri
+
+
+def do_logo(khung, W, H, da_co=(), dai=None, nguong_canh=(30, 90)):
+    """Logo / chữ ký kênh nguồn = NÉT ĐỨNG YÊN: pixel là cạnh (Canny) ở ≥ 45% khung trong khi cảnh thay đổi.
+    Chỉ nhận cụm nằm TRỌN trong dải mép khung (25% mỗi cạnh), nhỏ (≤ 35% bề rộng, ≤ 20% bề cao), không phải nét dài kiểu đường viền.
+    Phim gần như đứng yên (< 15% diện tích có cử động) ⇒ không dò (nét cảnh cũng đứng yên). Trả ô theo toạ độ khung GỐC W×H;
+    bỏ ô đã nằm trong `da_co` (ô tĩnh của bộ đọc chữ), và ô trùng dải phụ đề `dai` trừ khi ô nằm ở hai bên (logo góc dưới)."""
+    import math
+    from collections import Counter
+
+    import cv2
+    import numpy as np
+    if len(khung) < 20:
+        return []
+    chon = khung[:: max(1, math.ceil(len(khung) / 120))]
+    anh = [im for im in (cv2.imread(str(f), cv2.IMREAD_GRAYSCALE) for f in chon) if im is not None]
+    if not anh:
+        return []
+    co = Counter(im.shape for im in anh).most_common(1)[0][0]       # cỡ khung đa số (khung mở đầu khác cỡ không được khoá cỡ)
+    anh = [im for im in anh if im.shape == co]
+    if len(anh) < 20:
+        return []
+    h, w = co
+    tan = np.zeros(co, np.float32)
+    for im in anh:
+        tan += cv2.Canny(im, *nguong_canh) > 0
+    tan /= len(anh)
+    nho = np.stack([cv2.resize(im, (max(1, w // 8), max(1, h // 8))) for im in anh]).astype(np.float32)
+    if float((nho.std(0) >= 8).mean()) < 0.15:
+        log("dò logo bằng hình: phim gần như đứng yên — bỏ qua (logo nếu có thì thêm tay vào 05_hinh/them_tay.json)")
+        return []
+    m = (tan >= 0.45).astype(np.uint8)
+    k = max(3, w // 80) | 1                      # nối nét chữ rời thành một cụm
+    n, lab, st, _ = cv2.connectedComponentsWithStats(cv2.dilate(m, np.ones((k, k), np.uint8)))
+    tx, ty, le = W / w, H / h, int(0.012 * min(W, H))
+    ra = []
+
+    def chong(o, v, ti=0.5):
+        cx = min(o["x2"], v["x2"]) - max(o["x1"], v["x1"]); cy = min(o["y2"], v["y2"]) - max(o["y1"], v["y1"])
+        return cx > 0 and cy > 0 and cx * cy >= ti * (o["x2"] - o["x1"]) * (o["y2"] - o["y1"])
+    for i in range(1, n):
+        x, y, bw, bh, _a = (int(v) for v in st[i])
+        if bw > 0.35 * w or bh > 0.20 * h or max(bw, bh) < 0.015 * w or max(bw / max(bh, 1), bh / max(bw, 1)) > 15:
+            continue                             # quá to / quá bé / nét dài kiểu đường viền
+        hai_ben = x + bw <= 0.25 * w or x >= 0.75 * w
+        if not (y + bh <= 0.25 * h or y >= 0.75 * h or hai_ben):
+            continue                             # không nằm trọn trong dải mép ⇒ không phải chỗ đặt logo
+        net = int(((lab[y:y + bh, x:x + bw] == i) & (m[y:y + bh, x:x + bw] > 0)).sum())
+        if net < 30:
+            continue
+        o = {"x1": max(0, int(x * tx) - le), "y1": max(0, int(y * ty) - le), "x2": min(W, int((x + bw) * tx) + le),
+             "y2": min(H, int((y + bh) * ty) + le)}
+        if any(v and chong(o, v) for v in da_co) or (dai and not hai_ben and chong(o, dai)):
+            continue
+        ra.append({**o, "chu": "(logo / chữ ký — dò bằng hình)", "nguon": "hinh", "ti_le_khung": round(float(tan[y:y + bh, x:x + bw].max()), 2)})
+    return ra
 
 
 def doc_o_tay(f, W, H):
@@ -249,6 +306,12 @@ def main(argv=None):
     if not a.chi_sub:
         khung, ocr = ocr_khung(goc, h, W, H)
         dai, khoang, o_tinh, so_o, them, vi_tri = phan_tich(ocr, W, H, cau)
+        if CAU_HINH.get("do_logo", True):
+            logo = do_logo(khung, W, H, da_co=o_tinh, dai=dai)
+            o_tinh = o_tinh + logo
+            if logo:
+                log(f"dò bằng hình: {len(logo)} logo / chữ ký đứng yên sát mép {[(o['x1'], o['y1'], o['x2'], o['y2']) for o in logo]} — "
+                    "mờ suốt phim (nhầm thì tắt: tap/cau_hinh.json {\"do_logo\": false})")
         them = list(them) + doc_o_tay(h / "them_tay.json", W, H)
         vung = {"W": W, "H": H, "dai_sub": dai, "khoang": [[round(a_, 2), round(b_, 2)] for a_, b_ in khoang], "tinh": o_tinh,
                 "them": them, "vi_tri_sub": {str(k): v for k, v in vi_tri.items()}, "so_khung": len(khung), "so_o_sub": so_o}

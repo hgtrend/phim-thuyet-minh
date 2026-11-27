@@ -33,6 +33,7 @@ CAU_HINH_GOC = {
     "sub_rong_toi_da": 0.86,
     "sub_day": 0.955,             # đáy chữ ở 95,5% chiều cao
     "mo_ban_kinh": 16,            # bán kính làm mờ vùng chữ Trung
+    "do_logo": True,              # dò logo / chữ ký kênh nguồn bằng nét đứng yên sát mép khung (B5) — dò nhầm thì đặt false
 }
 
 BUOC = ["b0_do_trung", "b1_nhan_nguon", "b2_tach_tieng", "b3_nghe", "b4_giong", "b5_mo_chu", "b6_nhac", "b7_dung", "b8_bia", "kiem"]
