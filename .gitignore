@@ -1,0 +1,7 @@
+# Dữ liệu tập (video, giọng, phiếu) nằm trong ./tap/ — không đưa lên kho
+tap/
+__pycache__/
+*.pyc
+.ruff_cache/
+.DS_Store
+.venv/

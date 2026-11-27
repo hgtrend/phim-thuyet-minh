@@ -1,0 +1,11 @@
+# Cài:  python3 -m pip install -r requirements.txt   (Python 3.10 trở lên; cần thêm ffmpeg — macOS: brew install ffmpeg · Ubuntu: sudo apt install ffmpeg)
+demucs>=4.0            # tách giọng / nhạc / hiệu ứng (B2)
+faster-whisper>=1.0    # nghe chữ Trung (B3) — Mac Apple Silicon có thể cài thêm mlx-whisper cho nhanh
+rapidocr-onnxruntime>=1.3   # đọc chữ trên hình để làm mờ (B3, B5)
+librosa>=0.10          # đo nhạc nền (B6)
+numpy
+Pillow>=10             # vẽ phụ đề, bìa
+opencv-python-headless>=4.8   # chấm khung làm bìa (B8)
+ImageHash>=4.3         # so bìa khi dò trùng (B0)
+yt-dlp                 # tìm trên YouTube khi dò trùng (B0); tải Bilibili nếu muốn
+zhconv                 # đổi chữ phồn → giản khi dò trùng (không bắt buộc)
